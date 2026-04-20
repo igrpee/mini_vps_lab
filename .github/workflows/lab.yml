@@ -1,0 +1,44 @@
+name: Mini VPS Lab
+
+on:
+  workflow_dispatch:
+
+jobs:
+  lab:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Start lab
+        run: |
+          echo "=== MINI VPS START ==="
+
+      - name: Create files (filesystem test)
+        run: |
+          mkdir lab
+          echo "hello world" > lab/file.txt
+          echo "data: $(date)" > lab/log.txt
+          ls -la lab
+
+      - name: Simple API simulation
+        run: |
+          python3 - << 'EOF'
+import json
+import time
+
+print("API SERVER STARTED (simulated)")
+
+db = {"users": [], "logs": []}
+
+for i in range(3):
+    db["logs"].append({"tick": i, "status": "ok"})
+    print(json.dumps(db))
+    time.sleep(1)
+
+print("API STOP")
+EOF
+
+      - name: Show logs
+        run: |
+          echo "=== FILE CONTENT ==="
+          cat lab/file.txt
+          cat lab/log.txt
