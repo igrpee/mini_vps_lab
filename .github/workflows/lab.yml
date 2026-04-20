@@ -1,50 +1,70 @@
-name: FULL CI BACKEND LAB
+name: CI OS
 
 on:
   workflow_dispatch:
     inputs:
-      action:
-        description: "command (status/run/log)"
+      cmd:
+        description: "command (ls/run/ps)"
         required: true
-        default: "status"
+        default: "ls"
 
 jobs:
-  backend:
+  os:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Init backend
+      # 📥 загрузка предыдущего состояния
+      - name: Restore state
+        uses: actions/download-artifact@v4
+        with:
+          name: os-state
+          path: state
+        continue-on-error: true
+
+      - name: Init if empty
         run: |
-          mkdir -p backend/logs backend/data
-          echo "{\"status\":\"online\"}" > backend/state.json
+          mkdir -p state/files state/logs
+          [ -f state/db.json ] || echo '{"processes":[]}' > state/db.json
 
-      - name: Handle command
+      # 🧠 логика "OS"
+      - name: Execute command
         run: |
-          ACTION="${{ github.event.inputs.action }}"
+          CMD="${{ github.event.inputs.cmd }}"
+          echo "CMD: $CMD"
 
-          echo "ACTION: $ACTION"
+          if [ "$CMD" = "ls" ]; then
+            echo "=== FILES ==="
+            ls -la state/files
 
-          if [ "$ACTION" = "status" ]; then
-            echo "BACKEND ONLINE"
+          elif [ "$CMD" = "run" ]; then
+            echo "=== RUN PROCESS ==="
+            ID=$(date +%s)
+            echo "process_$ID" > state/files/p_$ID.txt
 
-          elif [ "$ACTION" = "run" ]; then
-            echo "RUN JOB START"
-            date > backend/logs/run.log
+            python3 - << 'PY'
+import json, time
+with open("state/db.json") as f:
+    db = json.load(f)
 
-          elif [ "$ACTION" = "log" ]; then
-            echo "LOGS:"
-            cat backend/logs/run.log || echo "no logs"
+pid = int(time.time())
+db["processes"].append({"pid": pid, "status": "running"})
+
+with open("state/db.json","w") as f:
+    json.dump(db, f)
+print("PROCESS STARTED:", pid)
+PY
+
+          elif [ "$CMD" = "ps" ]; then
+            echo "=== PROCESS LIST ==="
+            cat state/db.json
 
           else
             echo "unknown command"
           fi
 
+      # 📤 сохраняем состояние
       - name: Save state
-        run: |
-          echo "updated: $(date)" >> backend/state.json
-
-      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: backend-data
-          path: backend
+          name: os-state
+          path: state
