@@ -1,18 +1,50 @@
-name: Mini VPS Lab
+name: FULL CI BACKEND LAB
 
 on:
   workflow_dispatch:
+    inputs:
+      action:
+        description: "command (status/run/log)"
+        required: true
+        default: "status"
 
 jobs:
-  lab:
+  backend:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Start
-        run: echo "mini vps started"
-
-      - name: Test
+      - name: Init backend
         run: |
-          mkdir lab
-          echo "ok" > lab.txt
-          cat lab.txt
+          mkdir -p backend/logs backend/data
+          echo "{\"status\":\"online\"}" > backend/state.json
+
+      - name: Handle command
+        run: |
+          ACTION="${{ github.event.inputs.action }}"
+
+          echo "ACTION: $ACTION"
+
+          if [ "$ACTION" = "status" ]; then
+            echo "BACKEND ONLINE"
+
+          elif [ "$ACTION" = "run" ]; then
+            echo "RUN JOB START"
+            date > backend/logs/run.log
+
+          elif [ "$ACTION" = "log" ]; then
+            echo "LOGS:"
+            cat backend/logs/run.log || echo "no logs"
+
+          else
+            echo "unknown command"
+          fi
+
+      - name: Save state
+        run: |
+          echo "updated: $(date)" >> backend/state.json
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-data
+          path: backend
