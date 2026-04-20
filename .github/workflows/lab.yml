@@ -1,0 +1,18 @@
+name: Mini VPS Lab
+
+on:
+  workflow_dispatch:
+
+jobs:
+  lab:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Start
+        run: echo "mini vps started"
+
+      - name: Test
+        run: |
+          mkdir lab
+          echo "ok" > lab.txt
+          cat lab.txt
